@@ -5,11 +5,15 @@ namespace SigilLauncher.VM;
 
 /// <summary>
 /// Manages the Hyper-V VM lifecycle: create, start, stop, and health monitoring.
+/// Includes periodic daemon health checks and VM crash detection.
 /// </summary>
 public class VMManager
 {
     private LauncherProfile _profile;
     private CancellationTokenSource? _healthCts;
+    private int _consecutiveHealthFailures;
+    private const int MaxConsecutiveFailures = 3;
+    private static readonly TimeSpan HealthCheckInterval = TimeSpan.FromSeconds(30);
 
     public VMState State { get; private set; } = VMState.Stopped;
     public string? ErrorMessage { get; private set; }
@@ -17,6 +21,14 @@ public class VMManager
     public bool DaemonReady { get; private set; }
     public string? VmIpAddress { get; private set; }
     public LauncherProfile CurrentProfile => _profile;
+
+    /// <summary>
+    /// Whether the VM image (vmlinuz) exists and is ready to boot.
+    /// </summary>
+    public bool ImageReady =>
+        File.Exists(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Sigil", "images", "vmlinuz"));
 
     public event Action? StateChanged;
 
@@ -46,6 +58,7 @@ public class VMManager
         SshReady = false;
         DaemonReady = false;
         VmIpAddress = null;
+        _consecutiveHealthFailures = 0;
         NotifyChanged();
 
         try
@@ -182,10 +195,80 @@ public class VMManager
 
             // Bootstrap TLS credentials on first run
             await CredentialBootstrap.RunAsync(VmIpAddress);
+
+            // Start periodic health monitoring
+            await MonitorHealthAsync(ct);
         }
         catch (OperationCanceledException)
         {
             // Health check cancelled during shutdown
+        }
+    }
+
+    /// <summary>
+    /// Periodic health monitoring: checks daemon every 30s.
+    /// After 3 consecutive failures, marks daemon as not ready.
+    /// Also detects VM crash via PowerShell.
+    /// </summary>
+    private async Task MonitorHealthAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(HealthCheckInterval);
+
+        while (!ct.IsCancellationRequested && await timer.WaitForNextTickAsync(ct))
+        {
+            // Check if VM is still running
+            var vmRunning = await IsVmRunningAsync(ct);
+            if (!vmRunning)
+            {
+                DaemonReady = false;
+                SshReady = false;
+                SetState(VMState.Error, "VM is no longer running (possible crash)");
+                return;
+            }
+
+            // Check daemon health
+            if (VmIpAddress != null)
+            {
+                var (exitCode, _, _) = await SshClient.RunCommandAsync(
+                    VmIpAddress, "sigilctl status", ct: ct);
+
+                if (exitCode == 0)
+                {
+                    _consecutiveHealthFailures = 0;
+                    if (!DaemonReady)
+                    {
+                        DaemonReady = true;
+                        NotifyChanged();
+                    }
+                }
+                else
+                {
+                    _consecutiveHealthFailures++;
+                    if (_consecutiveHealthFailures >= MaxConsecutiveFailures && DaemonReady)
+                    {
+                        DaemonReady = false;
+                        ErrorMessage = "sigild health check failed (3 consecutive failures)";
+                        NotifyChanged();
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Check if the VM is still running via PowerShell Get-VM query.
+    /// </summary>
+    private async Task<bool> IsVmRunningAsync(CancellationToken ct)
+    {
+        try
+        {
+            var (exitCode, output, _) = await ProcessRunner.RunPowerShellAsync(
+                VMConfiguration.GetVmStateScript(_profile), ct);
+            return exitCode == 0 && output.Contains("Running", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
         }
     }
 

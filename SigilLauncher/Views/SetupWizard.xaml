@@ -1,0 +1,158 @@
+<Page
+    x:Class="SigilLauncher.Views.SetupWizard"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Padding="32" Width="520">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Step indicator -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,24">
+            <TextBlock x:Name="StepIndicator" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        </StackPanel>
+
+        <!-- Step content area -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid>
+                <!-- Step 0: Welcome -->
+                <StackPanel x:Name="StepWelcome" Spacing="16" Visibility="Visible">
+                    <TextBlock Text="Welcome to Sigil" FontSize="28" FontWeight="Bold" />
+                    <TextBlock TextWrapping="Wrap" FontSize="14">
+                        Sigil creates an AI-powered development environment inside a lightweight virtual machine on your Windows PC.
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" FontSize="14">
+                        This wizard will check your hardware, configure resources, and build your workspace image.
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Step 1: Hardware -->
+                <StackPanel x:Name="StepHardware" Spacing="12" Visibility="Collapsed">
+                    <TextBlock Text="Hardware Check" FontSize="22" FontWeight="Bold" />
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <TextBlock x:Name="HwCpu" FontSize="14" />
+                        <TextBlock x:Name="HwRam" FontSize="14" />
+                        <TextBlock x:Name="HwDisk" FontSize="14" />
+                        <TextBlock x:Name="HwArch" FontSize="14" />
+                        <TextBlock x:Name="HwGpu" FontSize="14" />
+                    </StackPanel>
+                    <Border x:Name="HwWarning" Background="#FFF3CD" CornerRadius="4" Padding="12" Visibility="Collapsed">
+                        <TextBlock x:Name="HwWarningText" Foreground="#856404" TextWrapping="Wrap" />
+                    </Border>
+                    <TextBlock x:Name="HwStatus" FontSize="14" FontWeight="SemiBold" Foreground="Green" />
+                </StackPanel>
+
+                <!-- Step 2: Resources -->
+                <StackPanel x:Name="StepResources" Spacing="12" Visibility="Collapsed">
+                    <TextBlock Text="Resource Allocation" FontSize="22" FontWeight="Bold" />
+                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                        How much of your system should the VM use? The defaults are recommended.
+                    </TextBlock>
+
+                    <StackPanel Spacing="4" Margin="0,8,0,0">
+                        <TextBlock FontSize="13">
+                            <Run Text="Memory: " />
+                            <Run x:Name="ResMemLabel" />
+                            <Run Text=" GB" />
+                        </TextBlock>
+                        <Slider x:Name="ResMemSlider" Minimum="2" Maximum="16" StepFrequency="1"
+                                ValueChanged="OnResourceSliderChanged" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock FontSize="13">
+                            <Run Text="CPU Cores: " />
+                            <Run x:Name="ResCpuLabel" />
+                        </TextBlock>
+                        <Slider x:Name="ResCpuSlider" Minimum="1" Maximum="16" StepFrequency="1"
+                                ValueChanged="OnResourceSliderChanged" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Step 3: Tools -->
+                <StackPanel x:Name="StepTools" Spacing="12" Visibility="Collapsed">
+                    <TextBlock Text="Development Tools" FontSize="22" FontWeight="Bold" />
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Editor" FontSize="13" FontWeight="SemiBold" />
+                        <ComboBox x:Name="ToolEditor" SelectedIndex="0" Width="200">
+                            <ComboBoxItem Content="VS Code" Tag="vscode" />
+                            <ComboBoxItem Content="Neovim" Tag="neovim" />
+                            <ComboBoxItem Content="Both" Tag="both" />
+                            <ComboBoxItem Content="None" Tag="none" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Container Engine" FontSize="13" FontWeight="SemiBold" />
+                        <ComboBox x:Name="ToolContainer" SelectedIndex="0" Width="200">
+                            <ComboBoxItem Content="Docker" Tag="docker" />
+                            <ComboBoxItem Content="None" Tag="none" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Shell" FontSize="13" FontWeight="SemiBold" />
+                        <ComboBox x:Name="ToolShell" SelectedIndex="0" Width="200">
+                            <ComboBoxItem Content="Zsh" Tag="zsh" />
+                            <ComboBoxItem Content="Bash" Tag="bash" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Notification Level" FontSize="13" FontWeight="SemiBold" />
+                        <ComboBox x:Name="ToolNotification" SelectedIndex="2" Width="200">
+                            <ComboBoxItem Content="Silent" Tag="0" />
+                            <ComboBoxItem Content="Digest" Tag="1" />
+                            <ComboBoxItem Content="Ambient" Tag="2" />
+                            <ComboBoxItem Content="Conversational" Tag="3" />
+                            <ComboBoxItem Content="Autonomous" Tag="4" />
+                        </ComboBox>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Step 4: Model -->
+                <StackPanel x:Name="StepModel" Spacing="12" Visibility="Collapsed">
+                    <TextBlock Text="Local AI Model" FontSize="22" FontWeight="Bold" />
+                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                        Select a model for on-device inference. Larger models need more VM RAM. You can skip this for cloud-only mode.
+                    </TextBlock>
+
+                    <RadioButtons x:Name="ModelSelector" MaxColumns="1" />
+
+                    <RadioButton x:Name="ModelNone" Content="None (cloud-only)" IsChecked="True" GroupName="ModelGroup" />
+                </StackPanel>
+
+                <!-- Step 5: Build -->
+                <StackPanel x:Name="StepBuild" Spacing="12" Visibility="Collapsed">
+                    <TextBlock Text="Build Image" FontSize="22" FontWeight="Bold" />
+                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                        Ready to build your workspace image. This requires Nix and may take several minutes.
+                    </TextBlock>
+
+                    <TextBlock x:Name="BuildStatus" FontSize="14" FontWeight="SemiBold" />
+                    <ProgressBar x:Name="BuildProgress" IsIndeterminate="True" Visibility="Collapsed" />
+
+                    <TextBox x:Name="BuildLog" IsReadOnly="True" AcceptsReturn="True"
+                             TextWrapping="Wrap" MaxHeight="200" FontFamily="Consolas"
+                             FontSize="11" Visibility="Collapsed"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto" />
+
+                    <TextBlock x:Name="BuildError" Foreground="Red" TextWrapping="Wrap" Visibility="Collapsed" />
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Navigation buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,24,0,0">
+            <Button x:Name="BtnBack" Content="Back" Click="OnBackClick" Visibility="Collapsed" />
+            <Button x:Name="BtnNext" Content="Next" Click="OnNextClick" Style="{StaticResource AccentButtonStyle}" />
+            <Button x:Name="BtnBuild" Content="Build" Click="OnBuildClick" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" />
+            <Button x:Name="BtnFinish" Content="Finish" Click="OnFinishClick" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" />
+        </StackPanel>
+    </Grid>
+
+</Page>

@@ -1,16 +1,19 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SigilLauncher.Models;
+using SigilLauncher.Services;
 using SigilLauncher.VM;
 
 namespace SigilLauncher.ViewModels;
 
 /// <summary>
 /// MVVM wrapper for VMManager, exposes observable properties for WinUI data binding.
+/// Includes build progress tracking and image rebuild support.
 /// </summary>
 public partial class LauncherViewModel : ObservableObject
 {
     private readonly VMManager _vmManager = new();
+    private readonly ImageBuilder _imageBuilder = new();
 
     [ObservableProperty]
     private VMState state = VMState.Stopped;
@@ -36,6 +39,25 @@ public partial class LauncherViewModel : ObservableObject
     [ObservableProperty]
     private bool canOpenShell;
 
+    [ObservableProperty]
+    private bool imageReady;
+
+    [ObservableProperty]
+    private bool canRebuild = true;
+
+    // Build progress
+    [ObservableProperty]
+    private bool buildProgressVisible;
+
+    [ObservableProperty]
+    private string buildProgressMessage = string.Empty;
+
+    [ObservableProperty]
+    private string buildLog = string.Empty;
+
+    [ObservableProperty]
+    private bool buildLogVisible;
+
     // Configuration bindings
     [ObservableProperty]
     private double memoryGB;
@@ -49,7 +71,9 @@ public partial class LauncherViewModel : ObservableObject
     public LauncherViewModel()
     {
         _vmManager.StateChanged += OnVmStateChanged;
+        _imageBuilder.StateChanged += OnBuildStateChanged;
         LoadProfileValues();
+        ImageReady = _vmManager.ImageReady;
     }
 
     private void OnVmStateChanged()
@@ -65,6 +89,24 @@ public partial class LauncherViewModel : ObservableObject
             CanStart = _vmManager.State is VMState.Stopped or VMState.Error;
             CanStop = _vmManager.State == VMState.Running;
             CanOpenShell = _vmManager.DaemonReady;
+            ImageReady = _vmManager.ImageReady;
+            CanRebuild = _vmManager.State is VMState.Stopped or VMState.Error;
+        });
+    }
+
+    private void OnBuildStateChanged()
+    {
+        Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()?.TryEnqueue(() =>
+        {
+            BuildProgressMessage = _imageBuilder.ProgressMessage;
+            BuildLog = _imageBuilder.LogOutput;
+            BuildProgressVisible = _imageBuilder.State == BuildState.Building;
+            BuildLogVisible = !string.IsNullOrEmpty(_imageBuilder.LogOutput);
+            CanRebuild = _imageBuilder.State != BuildState.Building;
+            ImageReady = _imageBuilder.ImageExists;
+
+            if (_imageBuilder.State == BuildState.Error)
+                ErrorMessage = _imageBuilder.ErrorMessage;
         });
     }
 
@@ -84,6 +126,14 @@ public partial class LauncherViewModel : ObservableObject
     private void OpenShell()
     {
         _vmManager.LaunchShell();
+    }
+
+    [RelayCommand]
+    private async Task RebuildAsync()
+    {
+        CanRebuild = false;
+        var profile = _vmManager.CurrentProfile;
+        await _imageBuilder.BuildAsync(profile);
     }
 
     [RelayCommand]

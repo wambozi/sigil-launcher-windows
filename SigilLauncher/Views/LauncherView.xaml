@@ -4,8 +4,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:SigilLauncher.Views">
 
-    <Grid Padding="24" RowSpacing="16" Width="360" Height="280">
+    <Grid Padding="24" RowSpacing="16" Width="420" MinHeight="340">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -33,23 +34,38 @@
 
         <!-- Readiness indicators -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="16">
+            <local:ReadinessIndicator Label="Image" IsReady="{x:Bind ViewModel.ImageReady, Mode=OneWay}" />
             <local:ReadinessIndicator Label="VM" IsReady="{x:Bind ViewModel.State, Converter={StaticResource VmRunningConverter}, Mode=OneWay}" />
             <local:ReadinessIndicator Label="SSH" IsReady="{x:Bind ViewModel.SshReady, Mode=OneWay}" />
             <local:ReadinessIndicator Label="Daemon" IsReady="{x:Bind ViewModel.DaemonReady, Mode=OneWay}" />
         </StackPanel>
 
-        <!-- Spacer -->
-        <Grid Grid.Row="3" />
+        <!-- Build progress -->
+        <StackPanel Grid.Row="3" Spacing="4"
+                    Visibility="{x:Bind ViewModel.BuildProgressVisible, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}">
+            <TextBlock Text="{x:Bind ViewModel.BuildProgressMessage, Mode=OneWay}" FontSize="12"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <ProgressBar IsIndeterminate="True" />
+        </StackPanel>
+
+        <!-- Log viewer -->
+        <TextBox Grid.Row="4" x:Name="LogViewer"
+                 IsReadOnly="True" AcceptsReturn="True"
+                 TextWrapping="Wrap" FontFamily="Consolas" FontSize="11"
+                 Text="{x:Bind ViewModel.BuildLog, Mode=OneWay}"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 Visibility="{x:Bind ViewModel.BuildLogVisible, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
+                 MaxHeight="140" />
 
         <!-- Error message -->
-        <TextBlock Grid.Row="4"
+        <TextBlock Grid.Row="5"
                    Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
                    Foreground="Red" FontSize="11"
                    TextWrapping="Wrap" TextAlignment="Center"
                    Visibility="{x:Bind ViewModel.ErrorMessage, Converter={StaticResource NullToVisibilityConverter}, Mode=OneWay}" />
 
         <!-- Action buttons -->
-        <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Stretch">
+        <StackPanel Grid.Row="6" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Stretch">
             <Button Content="Start"
                     Command="{x:Bind ViewModel.StartCommand}"
                     Visibility="{x:Bind ViewModel.CanStart, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
@@ -62,6 +78,9 @@
             <Button Content="Open Shell"
                     Command="{x:Bind ViewModel.OpenShellCommand}"
                     IsEnabled="{x:Bind ViewModel.CanOpenShell, Mode=OneWay}" />
+            <Button Content="Rebuild"
+                    Command="{x:Bind ViewModel.RebuildCommand}"
+                    Visibility="{x:Bind ViewModel.CanRebuild, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}" />
         </StackPanel>
     </Grid>
 

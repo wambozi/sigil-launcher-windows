@@ -1,4 +1,5 @@
 using SigilLauncher.Models;
+using SigilLauncher.Services;
 
 namespace SigilLauncher.VM;
 
@@ -39,16 +40,18 @@ Write-Output 'VM configured'";
     }
 
     /// <summary>
-    /// PowerShell script to create SMB shares for workspace and profile directories.
+    /// PowerShell script to create SMB shares for workspace, profile, and models directories.
     /// </summary>
     public static string CreateSmbSharesScript(LauncherProfile profile)
     {
         var profileDir = LauncherProfile.ProfileDir;
+        var modelsDir = ModelManager.ModelsDirectory;
 
         return $@"
 # Ensure directories exist
 if (-not (Test-Path '{profile.WorkspacePath}')) {{ New-Item -ItemType Directory -Path '{profile.WorkspacePath}' -Force }}
 if (-not (Test-Path '{profileDir}')) {{ New-Item -ItemType Directory -Path '{profileDir}' -Force }}
+if (-not (Test-Path '{modelsDir}')) {{ New-Item -ItemType Directory -Path '{modelsDir}' -Force }}
 
 # Create SMB shares (remove existing first to update paths)
 if (Get-SmbShare -Name 'sigil-workspace' -ErrorAction SilentlyContinue) {{ Remove-SmbShare -Name 'sigil-workspace' -Force }}
@@ -56,6 +59,9 @@ New-SmbShare -Name 'sigil-workspace' -Path '{profile.WorkspacePath}' -FullAccess
 
 if (Get-SmbShare -Name 'sigil-profile' -ErrorAction SilentlyContinue) {{ Remove-SmbShare -Name 'sigil-profile' -Force }}
 New-SmbShare -Name 'sigil-profile' -Path '{profileDir}' -FullAccess 'Everyone'
+
+if (Get-SmbShare -Name 'sigil-models' -ErrorAction SilentlyContinue) {{ Remove-SmbShare -Name 'sigil-models' -Force }}
+New-SmbShare -Name 'sigil-models' -Path '{modelsDir}' -ReadAccess 'Everyone'
 
 Write-Output 'SMB shares created'";
     }
@@ -95,6 +101,7 @@ if ($ips) {{ Write-Output $ips[0] }} else {{ exit 1 }}";
         return @"
 if (Get-SmbShare -Name 'sigil-workspace' -ErrorAction SilentlyContinue) { Remove-SmbShare -Name 'sigil-workspace' -Force }
 if (Get-SmbShare -Name 'sigil-profile' -ErrorAction SilentlyContinue) { Remove-SmbShare -Name 'sigil-profile' -Force }
+if (Get-SmbShare -Name 'sigil-models' -ErrorAction SilentlyContinue) { Remove-SmbShare -Name 'sigil-models' -Force }
 Write-Output 'SMB shares removed'";
     }
 
