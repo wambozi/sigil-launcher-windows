@@ -63,6 +63,21 @@ public class VMManager
 
         try
         {
+            // Verify VM image exists before attempting anything
+            if (!ImageReady)
+            {
+                throw new Exception(
+                    "No VM image found. Run the setup wizard first to build a VM image.\n" +
+                    $"Expected: {Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Sigil", "images", "vmlinuz")}");
+            }
+
+            if (!File.Exists(_profile.DiskImagePath))
+            {
+                throw new Exception(
+                    $"VM disk image not found at: {_profile.DiskImagePath}\n" +
+                    "Run the setup wizard to build the VM image.");
+            }
+
             // Create VM if it doesn't exist
             var (exitCode, output, error) = await ProcessRunner.RunPowerShellAsync(
                 VMConfiguration.CreateVmScript(_profile));
@@ -149,8 +164,8 @@ public class VMManager
     {
         try
         {
-            // Poll for VM IP address (30s timeout, 2s interval)
-            var ipDeadline = DateTime.UtcNow.AddSeconds(30);
+            // Poll for VM IP address (90s timeout, 3s interval — first boot takes longer)
+            var ipDeadline = DateTime.UtcNow.AddSeconds(90);
             while (!ct.IsCancellationRequested && DateTime.UtcNow < ipDeadline)
             {
                 var (exitCode, output, _) = await ProcessRunner.RunPowerShellAsync(
@@ -161,7 +176,7 @@ public class VMManager
                     NotifyChanged();
                     break;
                 }
-                await Task.Delay(2000, ct);
+                await Task.Delay(3000, ct);
             }
 
             if (VmIpAddress == null)

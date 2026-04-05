@@ -75,10 +75,22 @@ public static class HardwareDetector
         string? gpuName = null;
         try
         {
-            var (exitCode, output, _) = ProcessRunner.RunPowerShellAsync(
-                "(Get-CimInstance Win32_VideoController | Select-Object -First 1).Name").GetAwaiter().GetResult();
-            if (exitCode == 0 && !string.IsNullOrWhiteSpace(output))
-                gpuName = output.Trim();
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = "-NoProfile -Command \"(Get-CimInstance Win32_VideoController | Select-Object -First 1).Name\"",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            using var proc = System.Diagnostics.Process.Start(psi);
+            if (proc != null)
+            {
+                var output = proc.StandardOutput.ReadToEnd();
+                proc.WaitForExit(5000);
+                if (proc.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+                    gpuName = output.Trim();
+            }
         }
         catch
         {

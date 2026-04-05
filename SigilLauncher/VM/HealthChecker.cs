@@ -7,8 +7,8 @@ namespace SigilLauncher.VM;
 /// </summary>
 public class HealthChecker
 {
-    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(60);
 
     /// <summary>
     /// Polls until SSH is reachable on the given host.
